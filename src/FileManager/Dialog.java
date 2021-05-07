@@ -53,10 +53,12 @@ public class Dialog extends JDialog {
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     }
 
-    private static void copyFile(String from, String to) throws IOException {
+    public static void copyFile(String from, String to) throws IOException {
         InputStream is = null;
         OutputStream os = null;
         try {
+            System.out.println(from);
+            System.out.println(to);
             is = new FileInputStream(from);
             os = new FileOutputStream(to);
             byte[] buffer = new byte[1024];
@@ -70,7 +72,9 @@ public class Dialog extends JDialog {
         }
     }
 
-    private static void renameFile(String from, String to) {
+    public static void renameFile(String from, String to) {
+        System.out.println(from);
+        System.out.println(to);
         File fromFile = new File(from);
         File toFile = new File(to);
         fromFile.renameTo(toFile);
@@ -79,12 +83,12 @@ public class Dialog extends JDialog {
     private void onOK() {
         if (getTitle() == "Copying") {
             try {
-                copyFile(fromField.getText(), toField.getText());
+                copyFile(currentDirectory.getText() + "\\" + fromField.getText(), toField.getText());
             } catch(IOException ex) {
                 System.out.println("Exception");
             }
-        } else if (getTitle() == "Rename") {
-            renameFile(fromField.getText(), toField.getText());
+        } else if (getTitle() == "Renaming") {
+            renameFile(currentDirectory.getText() + "\\" + fromField.getText(), currentDirectory.getText() + "\\" + toField.getText());
         }
         dispose();
     }

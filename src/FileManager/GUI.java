@@ -94,18 +94,24 @@ public class GUI extends JFrame{
 		// Creates tree items and listeners and adds to tree
 		JMenuItem expand = new JMenuItem("Expand Branch");
 		JMenuItem collapse = new JMenuItem("Collapse Branch");
+		expand.addActionListener(new ExpandActionListener());
+		collapse.addActionListener(new CollapseActionListener());
 		tree.add(expand);
 		tree.add(collapse);
 
 		// Creates window items and listeners and adds to window
 		JMenuItem newW = new JMenuItem("New");
 		JMenuItem cascade = new JMenuItem("Cascade");
+		newW.addActionListener(new NewActionListener());
+		cascade.addActionListener(new CascadeActionListener());
 		window.add(newW);
 		window.add(cascade);
 
 		// Creates help items and listeners and adds to help
 		JMenuItem helpH = new JMenuItem("Help");
 		JMenuItem about = new JMenuItem("About");
+		helpH.addActionListener(new HelpActionListener());
+		about.addActionListener(new AboutActionListener());
 		help.add(helpH);
 		help.add(about);
 
@@ -152,29 +158,44 @@ public class GUI extends JFrame{
 			DefaultMutableTreeNode node = (DefaultMutableTreeNode) ff.dirPanel.dirTree.getLastSelectedPathComponent();
 			FileNode currentDirectoryNode = (FileNode) node.getUserObject();
 			File currentDirectory = (File) currentDirectoryNode.getFile();
-			dlg.setCurrentDirectory("Current Directory: " + currentDirectory);
+			dlg.setCurrentDirectory(currentDirectory.getPath());
 			dlg.setVisible(true);
+
+			int selected = ff.dirPanel.dirTree.getMinSelectionRow();
+			ff.dirPanel.dirTree.setSelectionRow(selected +1);
+			ff.dirPanel.dirTree.setSelectionRow(selected);
 		}
 	}
 
 	private class RunActionListener implements ActionListener {
 		@Override
 		public void actionPerformed(ActionEvent e) {
-
+			executeFile((File) ff.fileP.list.getSelectedValue());
 		}
 	}
 
 	private class DeleteActionListener implements ActionListener {
 		@Override
 		public void actionPerformed(ActionEvent e) {
-
+			int result = JOptionPane.showConfirmDialog(ff.dirPanel.dirTree,
+					"Delete " + ff.fileP.list.getSelectedValue(), "Deleting",
+					JOptionPane.YES_NO_OPTION,
+					JOptionPane.QUESTION_MESSAGE);
+			if(result == JOptionPane.YES_OPTION){
+				//label.setText("You selected: Yes");
+				File f = (File) ff.fileP.list.getSelectedValue();
+				f.delete();
+			}
+			int selected = ff.dirPanel.dirTree.getMinSelectionRow();
+			ff.dirPanel.dirTree.setSelectionRow(selected +1);
+			ff.dirPanel.dirTree.setSelectionRow(selected);
 		}
 	}
 
-	public void executeFile(String filePath) {
+	public void executeFile(File file) {
 		Desktop desktop = Desktop.getDesktop();
 		try {
-			desktop.open(new File(filePath));
+			desktop.open(file);
 		} catch (IOException ex) {
 			System.out.println(ex);
 		}
@@ -194,10 +215,7 @@ public class GUI extends JFrame{
 				desktop.add(ff2);
 				ff2.moveToFront();
 				revalidateAndPaint();
-
 			}
-
-
 		}
 	}
 
@@ -215,6 +233,61 @@ public class GUI extends JFrame{
 				ff.fileP.revalidate();
 				ff.fileP.repaint();
 			}
+		}
+	}
+
+	private class ExpandActionListener implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			ff.dirPanel.dirTree.expandRow(ff.dirPanel.dirTree.getMaxSelectionRow());
+		}
+	}
+
+	private class CollapseActionListener implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			ff.dirPanel.dirTree.collapseRow(ff.dirPanel.dirTree.getMaxSelectionRow());
+		}
+	}
+
+	private class NewActionListener implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			File f = (File) combo.getSelectedItem();
+			FileFrame ff2 = new FileFrame(f);
+
+			desktop.add(ff2);
+			ff2.moveToFront();
+			revalidateAndPaint();
+		}
+	}
+
+	private class CascadeActionListener implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			int x = 0; int y = 0;
+			for (JInternalFrame jframe : desktop.getAllFrames()) {
+				jframe.setLocation(x,y);
+				x+=30;
+				y+=30;
+				jframe.moveToFront();
+			}
+		}
+	}
+
+	private class HelpActionListener implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			NoHelp dlg = new NoHelp();
+			dlg.setVisible(true);
+		}
+	}
+
+	private class AboutActionListener implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			AboutBox dlg = new AboutBox();
+			dlg.setVisible(true);
 		}
 	}
 }

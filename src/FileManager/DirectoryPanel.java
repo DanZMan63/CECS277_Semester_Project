@@ -79,7 +79,7 @@ public class DirectoryPanel extends JPanel {
             } else {
                 jList = new JList();
             }
-            filePanel.addJList(jList);
+            filePanel.addJList(jList,fn.getFile());
         }
     }
 

@@ -6,6 +6,10 @@ import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetDropEvent;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
@@ -16,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import javax.swing.*;
 import javax.swing.plaf.metal.MetalIconFactory;
+import javax.swing.tree.DefaultMutableTreeNode;
 
 
 /**
@@ -28,22 +33,37 @@ public class FilePanel extends JPanel {
     DefaultListModel model = new DefaultListModel();
     JScrollPane scroll = new JScrollPane();
     boolean details = true;
+    JPopupMenu pop = new JPopupMenu();
+    File currentDirectory;
 
     public FilePanel() {
         this.setDropTarget(new MyDropTarget());
         list.setDragEnabled(true);
+        list.setDropMode(DropMode.INSERT);
         Map<Object, Icon> icons = new HashMap<Object, Icon>();
         icons.put("file", MetalIconFactory.getTreeLeafIcon());
         icons.put("folder", MetalIconFactory.getTreeFolderIcon());
         list.setCellRenderer(new IconListRenderer(icons));
+        list.addMouseListener(new PopMouseListener());
 
         scroll.setViewportView(this.list);
         list.setModel(model);
         scroll.setPreferredSize(new Dimension(650, 550));
         add(scroll);
+
+        JMenuItem rename = new JMenuItem("Rename");
+        JMenuItem copy = new JMenuItem("Copy");
+        JMenuItem delete = new JMenuItem("Delete");
+        rename.addActionListener(new RenameActionListener());
+        copy.addActionListener(new CopyActionListener());
+        delete.addActionListener(new DeleteActionListener());
+        pop.add(rename);
+        pop.add(copy);
+        pop.add(delete);
     }
 
-    public void addJList(JList jlist) {
+    public void addJList(JList jlist, File directory) {
+        currentDirectory = directory;
         this.removeAll();
         list = jlist;
         if (list.getModel().getSize() > 0) {
@@ -53,6 +73,9 @@ public class FilePanel extends JPanel {
         } else {
             add(jlist);
         }
+        list.addMouseListener(new PopMouseListener());
+        list.setDragEnabled(true);
+        list.setDropMode(DropMode.INSERT);
 
         Map<Object, Icon> icons = new HashMap<Object, Icon>();
         icons.put("file", MetalIconFactory.getTreeLeafIcon());
@@ -99,17 +122,36 @@ public class FilePanel extends JPanel {
                     //individual file names and store in String[]
                     String[] next = temp.split("\\n");
                     //add the strings to the listmodel
-                    for(int i=0; i<next.length;i++)
+                    for(int i=0; i<next.length;i++) {
+                        System.out.println("dnd: " + next[i].toString());
                         model.addElement(next[i]);
+
+                        File fromFile = new File(next[i].toString());
+                        String toFile = currentDirectory + "\\" + fromFile.getName();
+                        Dialog.copyFile(next[i].toString(), toFile);
+                    }
                 }
                 else{ //then if not String, Files are assumed
                     result =(List)evt.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
                     //process the input
                     for(Object o : result){
-                        System.out.println(o.toString());
-                        model.addElement(o.toString());
+                        System.out.println("dnd: " + o.toString());
+                        model.addElement(o);
+
+                        File fromFile = new File(o.toString());
+                        String toFile = currentDirectory + "\\" + fromFile.getName();
+                        Dialog.copyFile(o.toString(), toFile);
                     }
                 }
+                //Refresh
+                File[] fileList = currentDirectory.listFiles();
+                JList jList = null;
+                if (fileList != null) {
+                    jList = new JList(fileList);
+                } else {
+                    jList = new JList();
+                }
+                addJList(jList,currentDirectory);
             }
             catch(Exception ex){
                 ex.printStackTrace();
@@ -145,6 +187,106 @@ public class FilePanel extends JPanel {
             Icon icon = icons.get(iconName);
             label.setIcon(icon);
             return label;
+        }
+    }
+
+    private class RenameActionListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Dialog dlg = new Dialog("Renaming");
+            File fromFile = (File) list.getSelectedValue();
+            dlg.setFromField(fromFile.getName());
+            dlg.setCurrentDirectory(currentDirectory.getPath());
+            dlg.setVisible(true);
+
+            File[] fileList = currentDirectory.listFiles();
+            JList jList = null;
+            if (fileList != null) {
+                jList = new JList(fileList);
+            } else {
+                jList = new JList();
+            }
+            addJList(jList,currentDirectory);
+        }
+    }
+
+    private class CopyActionListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            Dialog dlg = new Dialog("Copying");
+            File fromFile = (File) list.getSelectedValue();
+            dlg.setFromField(fromFile.getName());
+            dlg.setCurrentDirectory(currentDirectory.getPath());
+            dlg.setVisible(true);
+
+            File[] fileList = currentDirectory.listFiles();
+            JList jList = null;
+            if (fileList != null) {
+                jList = new JList(fileList);
+            } else {
+                jList = new JList();
+            }
+            addJList(jList,currentDirectory);
+        }
+    }
+
+    private class DeleteActionListener implements ActionListener {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            int result = JOptionPane.showConfirmDialog(list,
+                    "Delete " + list.getSelectedValue(), "Deleting",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE);
+            if(result == JOptionPane.YES_OPTION){
+                //label.setText("You selected: Yes");
+                File f = (File) list.getSelectedValue();
+                f.delete();
+            }
+            File[] fileList = currentDirectory.listFiles();
+            JList jList = null;
+            if (fileList != null) {
+                jList = new JList(fileList);
+            } else {
+                jList = new JList();
+            }
+            addJList(jList,currentDirectory);
+        }
+    }
+
+    private class PopMouseListener extends MouseAdapter {
+
+        @Override
+        public void mouseClicked(MouseEvent evt) {
+            if (evt.getClickCount() == 2) {
+
+                // Double-click detected
+                int index = list.locationToIndex(evt.getPoint());
+                list.setSelectedIndex(index);
+                File f = (File) list.getSelectedValue();
+                Desktop desktop = Desktop.getDesktop();
+                try {
+                    desktop.open(f);
+                } catch (IOException ex) {
+                    System.out.println(ex);
+                }
+            }
+        }
+        @Override
+        public void mousePressed(MouseEvent e) {
+            check(e);
+        }
+
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            check(e);
+        }
+
+        public void check(MouseEvent e) {
+            System.out.println("check");
+            if (e.isPopupTrigger()) {
+                list.setSelectedIndex(list.locationToIndex(e.getPoint()));
+                pop.show(list, e.getX(), e.getY());
+            }
         }
     }
 }
